@@ -137,4 +137,129 @@ for (m in 1:12) {
 
 ## Part (d) Describe the two plots above. Do we have evidence of seasonality in the time series?  Explain.
 
-Yes, there appears to be seasonality. We see that there is a clear pattern in the residual plot. We confirm this observation when looking at the monthly average plot. We see that there are visually significant differences across months. Moreover, these differences across months are greater than within month. 
+Yes, there appears to be seasonality. We see that there is a clear pattern in the residual plot (which seems stationary). We confirm this observation when looking at the monthly average plot. We see that there are visually significant differences across months. Moreover, these differences across months are greater than within month. 
+
+
+## Part (e) Describe the estimate of the seasonal component in words.
+
+```{r, results='hide'}
+
+## now average across the years to get the 's.hat.stars'
+s.hat.stars <- rowMeans(temp.matrix)
+s.hat.stars
+
+## plot the 's.hat.stars', without the x-axis
+#par(mfrow=c(1,1))
+#plot(s.hat.stars, type="l", xaxt="n")
+
+## now we'll label the x-axis
+#axis(side=1, at=1:12, labels=months)
+
+
+## now subtract off the mean of the 's.hat.stars' so that we have a
+## seasonal component that adds up to zero (has average zero).
+s.hat <- s.hat.stars - mean(s.hat.stars)
+
+## plot the 's.hat', without the x-axis
+plot(s.hat, type="l", xaxt="n",
+     xlab="month", ylab="estimate of seasonal component")
+
+## now we'll label the x-axis
+axis(side=1, at=1:12, labels=months)
+
+```
+
+From the seasonal component plot, we expect lower than average temperatures from about October to April, with January expected to have the lowest average temp (about 23 degrees below average). We expect higher temperatures from about May to September , with July expected to have the highest average temp (about 22 degrees above average).
+
+## Part (f) Describe this plot:
+
+```{r, echo = TRUE}
+
+## ======================================================================
+## ** Step 3 of the algorithm **
+## Deseasonalize the time series and estimate the trend parametrically.
+## ======================================================================
+
+## remove the seasonality
+deseasonalized <- temp - s.hat
+
+## plot the deseasonalized time series.
+plot(year, deseasonalized, type="l",
+     xlab="year", ylab="deseasonalized temperature")
+
+```
+
+We see that the de-sesonalized data has a much smaller ranger than the original set. However, we see visually that there is a significant amount of noise. 
+
+
+## Part (g) First write down the statistical model that has been fit to the deseasonalized data. Next, write down the estimated trend model. Explain why can we not assess the statistical significance of the regression parameters from this model output.
+
+```{r, results = 'hide'}
+
+## We now fit a quadratic line model to the data.
+lm.deseasonalized <- lm(deseasonalized ~ year + I(year^2))
+
+## Summarize the model obtained.
+summary(lm.deseasonalized)
+
+## Plot the series and the estimated regression line.
+plot(year, deseasonalized, type="l",
+     xlab="year", ylab="deseasonalized temperature")
+lines(year, fitted(lm.deseasonalized), lty=2)
+
+```
+
+The statistical model is:
+
+$$  Y_t = \beta_0 + \beta_1t + \beta_2t^2 - \hat{s}_t + \eta_t$$
+
+The estimated model is:
+
+$$  \widehat{deseasonY_t} = -254,500 + 254.4t - 0.06358t^2$$
+
+We cannot assess statistical significance because these ordinary least squares estimates assume that $\eta_t$ is identically and independently distributed. However, as we observed above there seems to be dependence in the data. 
+
+## Part (h) Using the figures, summarize the residuals.  In your answer make sure you respond to the following:
+* **Do the residuals seem to be drawn from a stationary process?**
+* **Do you believe that the residuals are a sample of IID noise?**
+* **Do the residuals seem to be drawn from a normal distribution?**
+
+```{r, echo = TRUE}
+
+## ======================================================================
+## ** Step 4 of the algorithm **
+## Calculate the residuals and look at the ACF.
+## ======================================================================
+
+## calculate the residuals
+resids <- resid(lm.deseasonalized)
+
+## Plot the residual series with a horizontal line at y=0.
+par(mfrow=c(2, 2))
+plot(year, resids, type="l", xlab="year", ylab="estimate of noise process")
+abline(h=0, lty=2)
+
+## plot the acf
+acf(resids, main="")
+
+## carry out the Ljung-Box test
+Box.test(resids, 22, type="Ljung-Box")
+
+## draw a Q-Q plot of the residuals.
+qqnorm(resids, xlab="z-scores", ylab="estimate of noise process", main="")
+qqline(resids)
+
+
+```
+
+* Looking at the noise process plot, the residuals seem to be drawn from a stationary process (neither the mean or variance depend on time). 
+
+* From the ACF plot and the Box-Ljung test, there is not enough evidence to suggest that the noise is not IID. The p-value of the Box-Ljung test is .275, which is not significant and thus does not reject the null hypothesis that the errors are IID. Moreover, in the ACF plot, none of the bars visually appears to be outside of the 95% blue interval. This again supports our other observations that there is not enough evidence to reject that the noise is IID.
+
+* Looking at the qqplot, the residuals line up on the reference line pretty well. Visually, I would conclude that the errors appear to be drawn from a normal distribution.
+
+
+# Appendix: All R code 
+
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
