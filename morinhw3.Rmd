@@ -6,7 +6,7 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, error = FALSE)
 ```
 
 We are going to perform the classical decomposition algorithm (CDA) upon a time series of monthly temperatures recorded in Columbus, OH from January 1995 to December 2005. The units of measurement is Fahrenheit.
@@ -34,3 +34,107 @@ plot(year, temp, type="l",
      xlab="year", ylab="monthly temperature (Fahrenheit)")
 
 ```
+
+## Part (a) Summarize the plot of the time series -- what features of the data are present?
+
+* The series visually appears to be stationary
+* Trend: There does not seem to be an obvious trend
+* Seasonality: There appears to be seasonality because there seems to be a periodic yearly pattern.
+* Correlation: There is correlation because nearby points seem more similar to each other than point further away. 
+
+---
+
+```{r, echo = TRUE, results='hide'}
+
+## We will now carry out the classical decomposition algorithm.
+
+## ======================================================================
+## ** Step 1 of the algorithm **
+## Estimate the trend by smoothing the time series.
+## ======================================================================
+
+## let us choose the period to be d=12 months
+d <- 12
+
+## half.d is d/2 
+half.d <- d/2
+
+## smooth the temp time series using the 'filter' command
+our.filter <- c(0.5, rep(1,d-1), 0.5)/d
+
+## display 'our.filter' to see the values makes sense!
+our.filter
+
+## 'n' is the length of time series
+n <- length(temp)
+
+## We will not filter the variable 'temp',
+## but a new variable called 'longer.temp'
+longer.temp <- c(temp[(d/2):1], temp, temp[n:(n-d/2+1)])
+longer.temp
+
+## now filter 'longer.temp'.
+temp.MA <- filter(longer.temp, our.filter)[(d/2+1):(d/2+n)]
+temp.MA
+
+```
+
+## Part (b) Try to explain why we have the variable 'longer.temp'. What does this variable contain, and what does the variable allow us to do in the 'filter' command?
+
+The 'longer.temp' variable artificially adds six months to the beginning and end of the original time series using values from the first and last month, respectively. Doing this allows us to produce estimates of the average for the entire range of the original series. 
+
+## Part (c) Summarise the plot of the smooth -- what do you see?  Do you think the variance of the trend estimate is constant with time?  Explain.
+
+```{r}
+
+## plot the time series.
+plot(year, temp, type="l",
+     xlab="year", ylab="monthly temperature (Fahrenheit)")
+
+## overlay the smooth
+lines(year, temp.MA, type="l", lwd=2)
+
+```
+
+Our MA filter stays fairly stable around 51 degress. It seems that the variance is constant over time because (as we see from the stability of the MA line) the series appears to be stationary.
+
+---
+
+```{r, echo = TRUE, results='hide'}
+
+## ======================================================================
+## ** Step 2 of the algorithm **
+## Estimate the seasonal component.
+## ======================================================================
+
+## calculate and plot the residuals of the smooth.
+temp.MA.resids <- temp - temp.MA
+
+## plot the time series (first plot)
+plot(year, temp.MA.resids, type="l",
+     xlab="year", ylab="residuals of the smooth")
+
+## we define a variable to hold the names of the months
+months <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+## Now we need to estimate the average seasonal components.
+## There should be 'd=12' of them.
+## We first form 'temp.MA.resids' into a matrix with 'd' rows.
+temp.matrix <- matrix(temp.MA.resids, nrow=d)
+temp.matrix
+
+## create the plot of temperatures by month (second plot)
+## in a panel of size 3 rows by 4 columns.
+par(mfrow=c(3,4)) 
+for (m in 1:12) {
+  plot(1995:2005, temp.matrix[m,], type="l",
+       xlab="year", ylab="temperature", main=months[m])
+  abline(h=mean(temp.matrix[m,]), lty=2)
+}
+
+```
+
+## Part (d) Describe the two plots above. Do we have evidence of seasonality in the time series?  Explain.
+
+Yes, there appears to be seasonality. We see that there is a clear pattern in the residual plot. We confirm this observation when looking at the monthly average plot. We see that there are visually significant differences across months. Moreover, these differences across months are greater than within month. 
